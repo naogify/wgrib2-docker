@@ -1,0 +1,47 @@
+name: Publish Docker image to GHCR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/**'
+  workflow_dispatch: # 手動トリガもOK
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract repo name
+        id: repo
+        run: |
+          IMAGE=ghcr.io/naogify/wgrib2
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image (latest)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.repo.outputs.image }}:latest
+            ${{ steps.repo.outputs.image }}:${{ github.sha }}
+
+      - name: Show image info
+        run: |
+          echo "Published: ${{ steps.repo.outputs.image }}:latest"
